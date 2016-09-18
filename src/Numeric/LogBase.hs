@@ -6,6 +6,7 @@ module Numeric.LogBase
   ( LB()
   , LBD
   , LBF
+  , toLogBase
   , liftLogBase
   , unwrapLogBase )
   where
@@ -38,6 +39,11 @@ newtype LB a = LB a
 type LBD = LB Double
 -- | Convience type synonym.
 type LBF = LB Float
+
+-- | Converts an ordinary number to `LB` number.
+toLogBase :: Floating a => a -> LB a
+toLogBase value = LB $ log value
+{-# INLINE toLogBase #-}
 
 -- | Converts `LB` number to its base type.
 --
