@@ -14,7 +14,17 @@ library
   build-depends:       base
                       ,binary
                       ,hashable
+                      ,primitive
+                      ,vector
   hs-source-dirs:      src
-  ghc-options:         -Wall -fno-warn-name-shadowing
+  ghc-options:         -Wall -fno-warn-name-shadowing -O2
+  default-language:    Haskell2010
+
+benchmark loggy
+  type:                exitcode-stdio-1.0
+  main-is:             Main.hs
+  hs-source-dirs:      benchmark
+  build-depends:       base, lognum, criterion, vector
+  ghc-options:         -Wall -fno-warn-name-shadowing -O2
   default-language:    Haskell2010
 

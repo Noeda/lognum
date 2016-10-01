@@ -1,6 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Numeric.LogBase
   ( LB()
@@ -16,6 +20,9 @@ import Data.Data
 import Data.Hashable
 import Data.Monoid
 import Data.Ratio
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Generic.Mutable as VGM
+import qualified Data.Vector.Unboxed as V
 import GHC.Generics
 
 -- | An `LB` is a numerical value. `LB` that internally keeps its value as @log
@@ -34,6 +41,61 @@ import GHC.Generics
 -- may result in NaN.
 newtype LB a = LB a
   deriving ( Eq, Ord, Typeable, Data, Generic, Binary, Hashable )
+
+newtype instance V.MVector s (LB a) = MV_LB (V.MVector s a)
+newtype instance V.Vector (LB a) = V_LB (V.Vector a)
+
+instance V.Unbox a => VGM.MVector V.MVector (LB a) where
+  basicLength (MV_LB vec) = VGM.basicLength vec
+  {-# INLINE basicLength #-}
+
+  basicOverlaps (MV_LB vec1) (MV_LB vec2) = VGM.basicOverlaps vec1 vec2
+  {-# INLINE basicOverlaps #-}
+
+  basicUnsafeNew x = MV_LB <$> VGM.basicUnsafeNew x
+  {-# INLINE basicUnsafeNew #-}
+
+  basicInitialize (MV_LB vec) = VGM.basicInitialize vec
+  {-# INLINE basicInitialize #-}
+
+  basicUnsafeSlice start offset (MV_LB vec) =
+    MV_LB $ VGM.basicUnsafeSlice start offset vec
+  {-# INLINE basicUnsafeSlice #-}
+
+  basicUnsafeRead (MV_LB vec) idx = LB <$> VGM.basicUnsafeRead vec idx
+  {-# INLINE basicUnsafeRead #-}
+
+  basicUnsafeWrite (MV_LB vec) idx (LB val) = VGM.basicUnsafeWrite vec idx val
+  {-# INLINE basicUnsafeWrite #-}
+
+  basicSet (MV_LB vec) (LB val) = VGM.basicSet vec val
+  {-# INLINE basicSet #-}
+
+instance V.Unbox a => VG.Vector V.Vector (LB a) where
+  basicLength (V_LB vec) = VG.basicLength vec
+  {-# INLINE basicLength #-}
+
+  basicUnsafeFreeze (MV_LB vec) = V_LB <$> VG.basicUnsafeFreeze vec
+  {-# INLINE basicUnsafeFreeze #-}
+
+  basicUnsafeThaw (V_LB vec) = MV_LB <$> VG.basicUnsafeThaw vec
+  {-# INLINE basicUnsafeThaw #-}
+
+  basicUnsafeSlice start offset (V_LB vec) =
+    V_LB $ VG.basicUnsafeSlice start offset vec
+  {-# INLINE basicUnsafeSlice #-}
+
+  basicUnsafeIndexM (V_LB vec) idx =
+    LB <$> VG.basicUnsafeIndexM vec idx
+  {-# INLINE basicUnsafeIndexM #-}
+
+  basicUnsafeCopy (MV_LB vec) (V_LB vec2) = VG.basicUnsafeCopy vec vec2
+  {-# INLINE basicUnsafeCopy #-}
+
+  elemseq (V_LB vec) (LB a) b = VG.elemseq vec a b
+  {-# INLINE elemseq #-}
+
+instance V.Unbox a => V.Unbox (LB a)
 
 -- | Convience type synonym.
 type LBD = LB Double
@@ -66,9 +128,10 @@ instance (Ord a, Floating a, RealFloat a) => Num (LB a) where
   LB num1 * LB num2 = LB $ num1 + num2
   {-# INLINE (*) #-}
 
-  LB num1 + LB num2 | num1 >= num2 =
-    LB $ num1 + log (1 + exp (num2 - num1))
-  LB num1 + LB num2 = LB num2 + LB num1
+  LB num1 + LB num2 =
+    if num1 > num2
+      then LB $ num1 + log (1 + exp (num2 - num1))
+      else LB $ num2 + log (1 + exp (num1 - num2))
   {-# INLINE (+) #-}
 
   LB num1 - LB num2 | num1 >= num2 =
