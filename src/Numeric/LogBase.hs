@@ -12,7 +12,8 @@ module Numeric.LogBase
   , LBF
   , toLogBase
   , liftLogBase
-  , unwrapLogBase )
+  , unwrapLogBase
+  , wrapLogBase )
   where
 
 import Data.Binary
@@ -120,6 +121,11 @@ liftLogBase (LB num) = exp num
 unwrapLogBase :: LB a -> a
 unwrapLogBase (LB num) = num
 {-# INLINE unwrapLogBase #-}
+
+-- | Wraps a number to `LB`, without any conversion.
+wrapLogBase :: a -> LB a
+wrapLogBase num = LB num
+{-# INLINE wrapLogBase #-}
 
 instance (Floating a, Show a) => Show (LB a) where
   show (LB val) = "<LB " <> show val <> " --> " <> show (exp val) <> ">"
